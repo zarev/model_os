@@ -3,12 +3,16 @@
 # uvicorn model_os:app --reload
 # pylint: disable=fixme
 
+from io import BytesIO
 import queue
 import threading
 from contextlib import asynccontextmanager
 from typing import Optional
+import base64
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from PIL import Image
+from transformers import AutoModelForCausalLM, AutoProcessor
 from PIL import Image
 from transformers import AutoModelForCausalLM, AutoProcessor
 
@@ -27,12 +31,12 @@ app = FastAPI(lifespan=lifespan)
 
 class Model:
     """
-    A class representing a model loaded using ONNX.
+    A class representing an inference model.
 
     Attributes:
     -----------
     model_path : str
-        The file path to the ONNX model.
+        The file path to the model.
     index : ints
         The index identifying the model instance.
     loaded : bool
@@ -41,7 +45,7 @@ class Model:
     Methods:
     --------
     load():
-        Loads the ONNX model and initializes the processor and tokenizer stream.
+        Loads the model and initializes it.
 
     run(input: tuple[Optional[str], str], output: queue.Queue) -> None:
         Processes input text and image using the loaded model and generates a response.
@@ -57,7 +61,7 @@ class Model:
         Parameters:
 
         model_path : str
-            The file path to the ONNX model.
+            The file path to the model.
         index : int
             The index identifying the model instance.
         """
@@ -71,16 +75,15 @@ class Model:
     def load(self):
         """Loads model components"""
         # tensorflow model loading logic
-        model_path = "microsoft/Phi-3-vision-128k-instruct"
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
+            self.model_path,
             device_map="cuda",
             trust_remote_code=True,
             torch_dtype="auto",
             # Use _attn_implementation='eager' to disable flash attention, or 'flash_attention_2'
             _attn_implementation="eager")
 
-        self.processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
+        self.processor = AutoProcessor.from_pretrained(self.model_path, trust_remote_code=True)
         self.loaded = True
 
     def run(self, input_data: tuple[Optional[str], str], output: queue.Queue) -> None:
@@ -112,7 +115,8 @@ class Model:
         image_obj = None
         # If there is image load it and add tag to prompt
         if input_image:
-            image_obj = [Image.open(input_image)]  # pylint: disable=no-member
+            image_data = base64.b64decode(input_image)
+            image_obj = Image.open(BytesIO(image_data))
             messages[0]["content"] += "<|image_1|>"
 
         messages[0]["content"] += f"{input_text}"
@@ -215,7 +219,7 @@ def load(request: LoadRequest):
     if request.model_id not in models:
         for gpu_index in range(request.num_gpus):
             for _ in range(request.models_per_gpu):
-                model_path = "app/models/phi/directml-int4-rtn-block-32"
+                model_path = "/app/models/phi"
                 model = Model(model_path,
                               gpu_index)
                 model.load()
