@@ -12,14 +12,17 @@ import base64
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from PIL import Image
-from transformers import AutoModelForCausalLM, AutoProcessor
+from pydub import AudioSegment
+from torch import argmax as torch_argmax
+from transformers import AutoModelForCausalLM, AutoProcessor, AutoModelForSeq2SeqLM
 
 
 @asynccontextmanager
 async def lifespan(my_app: FastAPI):  # pylint: disable=unused-argument
     """Manages lifespan of app"""
     # Application startup
-    load(LoadRequest(num_gpus=1, models_per_gpu=1))
+    # load phi model
+    load(LoadRequest(num_gpus=1, models_per_gpu=1, model_name="phi"))
     yield
     # Application shutdown
     models.clear()
@@ -65,6 +68,17 @@ class Model:
         """
         self.model = None
         self.model_path = model_path
+
+        print('init model path\n', self.model_path)
+
+        self.is_whisper = False
+        # self.is_whisper = model_path.find('whisper')
+        # self.model_type = AutoModelForSeq2SeqLM if self.is_whisper else AutoModelForCausalLM
+        self.model_type = AutoModelForCausalLM
+        print('init model type\n', self.model_type)
+        self.use_safetensors = False
+        # self.use_safetensors = True if self.is_whisper else False
+
         self.index = index
         self.loaded = False
         self.processor = None
@@ -73,8 +87,9 @@ class Model:
     def load(self):
         """Loads model components"""
         # tensorflow model loading logic
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model = self.model_type.from_pretrained(
             self.model_path,
+            # use_safetensors = False,
             device_map="cuda",
             trust_remote_code=True,
             torch_dtype="auto",
@@ -84,7 +99,7 @@ class Model:
         self.processor = AutoProcessor.from_pretrained(self.model_path, trust_remote_code=True)
         self.loaded = True
 
-    def run(self, input_data: tuple[Optional[str], str], output: queue.Queue) -> None:
+    def run(self, input_data: tuple[Optional[str], Optional[str], str], output: queue.Queue) -> None:
         """
         Processes input text and image using the loaded model and generates a response.
 
@@ -104,8 +119,18 @@ class Model:
         - The response is placed into the output queue when processing is complete.
         """
         # TODO add file input option
-        input_image, input_text = input_data
+        input_image, input_audio, input_text = input_data
 
+        # if self.is_whisper():
+        #     # Process the audio input to generate text or embeddings
+        #     audio_data = base64.b64decode(input_audio)
+        #     audio_segment = AudioSegment(data=audio_data, sample_width=2, frame_rate=16000, channels=1)
+        #     input_values = self.processor(audio_segment.get_array_of_samples(), return_tensors="pt", sampling_rate=16000).input_values
+        #     logits = self.model(input_values).logits
+        #     predicted_ids = torch_argmax(logits, dim=-1)
+        #     transcription = self.processor.batch_decode(predicted_ids)[0]
+        #     input_text += transcription  # Append the transcription to the input text
+            
         messages = [{
             "role": "user",
             "content": ''}]
@@ -157,7 +182,7 @@ class Model:
         output.put(response)
         output.put(None)
 
-    def generate(self, image: Optional[str], text: str) -> str:
+    def generate(self, image: Optional[str], audio: Optional[str], text: str) -> str:
         """
         Runs the `run` method in a separate thread and retrieves the result.
 
@@ -170,7 +195,7 @@ class Model:
         """
         output = queue.Queue()
         thread = threading.Thread(
-            target=self.run, args=((image, text), output))
+            target=self.run, args=((image, audio, text), output))
         thread.daemon = True
         thread.start()
 
@@ -202,7 +227,8 @@ class LoadRequest(BaseModel):
     num_gpus: int = 1
     models_per_gpu: int = 1
     # Add model_id to specify which model to load
-    model_id: str = "default-model-id"
+    model_name: str = "/app/models/phi"
+    # model_name: str = "default-model-id"
 
 
 @app.post("/load")
@@ -214,24 +240,27 @@ def load(request: LoadRequest):
     If not, it loads the model into memory and makes it available for processing.
     """
 
-    if request.model_id not in models:
+    if request.model_name not in models:
         for gpu_index in range(request.num_gpus):
             for _ in range(request.models_per_gpu):
                 model_path = "/app/models/phi"
-                model = Model(model_path,
-                              gpu_index)
+                model = Model(model_path, gpu_index)
                 model.load()
-                models[request.model_id] = model
-    return {"status": "200 OK", "model_id": request.model_id}
+                models[request.model_name] = model
+
+    print('\load models', models)
+    print('\load request', request)
+
+    return {"status": "200 OK", "model_name": request.model_name}
 
 
 class PromptRequest(BaseModel):
     '''Definition of the client request'''
     model: int = 0
     image: Optional[str] = None
+    audio: Optional[str] = None
     text: str
-    # Add model_id to specify which model to use
-    model_id: str = "default-model-id"
+    model_name: str = "/app/models/phi"
 
 
 @app.post("/prompt")
@@ -243,17 +272,22 @@ def prompt(request: PromptRequest):
     and returns the model's generated response.
     """
 
-    if request.model_id not in models:
+    if request.model_name not in models:
         raise HTTPException(
             status_code=404, detail="Model not found but tried to prompt.")
 
-    model = models[request.model_id]
+    model = models[request.model_name]
+
+    request_prompt = request.text
+
+    audio = None
+    if request.audio is not None:
+        audio = request.audio
 
     image = None
-    request_prompt = request.text
     if request.image is not None:
         image = request.image
 
-    response_text = model.generate(image, request_prompt)
+    response_text = model.generate(image=image, text=request_prompt, audio=audio)
 
     return {"response": response_text}
