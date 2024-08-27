@@ -13,9 +13,15 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from PIL import Image
 from pydub import AudioSegment
-from torch import argmax as torch_argmax
-from transformers import AutoModelForCausalLM, AutoProcessor, AutoModelForSeq2SeqLM
+from torch import float16
+from transformers import AutoModelForCausalLM, AutoProcessor, AutoModelForSpeechSeq2Seq
+import numpy as np
 
+
+# import debugpy
+# debugpy.listen(("0.0.0.0", 5678))
+# print("Waiting for debugger to attach...")
+# debugpy.wait_for_client()
 
 @asynccontextmanager
 async def lifespan(my_app: FastAPI):  # pylint: disable=unused-argument
@@ -23,12 +29,14 @@ async def lifespan(my_app: FastAPI):  # pylint: disable=unused-argument
     # Application startup
     # load phi model
     load(LoadRequest(num_gpus=1, models_per_gpu=1, model_name="phi"))
+    # load(LoadRequest(num_gpus=1, models_per_gpu=1, model_name="whisper"))
     yield
     # Application shutdown
     models.clear()
 
 app = FastAPI(lifespan=lifespan)
 
+from pydub import AudioSegment
 
 class Model:
     """
@@ -72,12 +80,11 @@ class Model:
         print('init model path\n', self.model_path)
 
         self.is_whisper = False
-        # self.is_whisper = model_path.find('whisper')
-        # self.model_type = AutoModelForSeq2SeqLM if self.is_whisper else AutoModelForCausalLM
+        self.is_whisper = model_path.count('whisper') == 1
+
         self.model_type = AutoModelForCausalLM
         print('init model type\n', self.model_type)
-        self.use_safetensors = False
-        # self.use_safetensors = True if self.is_whisper else False
+        self.use_safetensors = True if self.is_whisper else False
 
         self.index = index
         self.loaded = False
@@ -87,9 +94,10 @@ class Model:
     def load(self):
         """Loads model components"""
         # tensorflow model loading logic
-        self.model = self.model_type.from_pretrained(
+        self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            # use_safetensors = False,
+            cache_dir=self.model_path,
+            # use_safetensors=self.use_safetensors,
             device_map="cuda",
             trust_remote_code=True,
             torch_dtype="auto",
@@ -121,16 +129,50 @@ class Model:
         # TODO add file input option
         input_image, input_audio, input_text = input_data
 
-        # if self.is_whisper():
-        #     # Process the audio input to generate text or embeddings
-        #     audio_data = base64.b64decode(input_audio)
-        #     audio_segment = AudioSegment(data=audio_data, sample_width=2, frame_rate=16000, channels=1)
-        #     input_values = self.processor(audio_segment.get_array_of_samples(), return_tensors="pt", sampling_rate=16000).input_values
-        #     logits = self.model(input_values).logits
-        #     predicted_ids = torch_argmax(logits, dim=-1)
-        #     transcription = self.processor.batch_decode(predicted_ids)[0]
-        #     input_text += transcription  # Append the transcription to the input text
+        if input_audio:
+            # model_path = "C:\\models\\whisper"
+            model_path = "/app/models/whisper"
+
+            whisper = AutoModelForSpeechSeq2Seq.from_pretrained(
+                model_path, torch_dtype="auto", low_cpu_mem_usage=True, use_safetensors=True, device_map="cuda", trust_remote_code=True
+            )
+
+            whisper_processor = AutoProcessor.from_pretrained(model_path)
+
+            print('server receieved audio')
+            print('server audio string chars\n', input_audio[:20])
+            # Assuming input_audio is a base64-encoded string
+            b64_bytes = base64.b64decode(input_audio)
+            print('server audio bytes\n', b64_bytes[:20])
+            print('len audio bytes\n', len(b64_bytes)) # check
+            arr_contents = np.frombuffer(b64_bytes, dtype=np.float32)
+            audio_array_int16 = (arr_contents * 32768).astype(np.int16)
+
+            print('audio_array_int16 int16\n', audio_array_int16[:20])
+
+            audio_segment = AudioSegment(data=audio_array_int16.tobytes(), sample_width=2, frame_rate=44100, channels=1)
+
+            audio_segment = audio_segment.set_frame_rate(16000)
+
+            # export audio to check if it survived the journey
+            audio_segment.export("/app/decode_test.wav", format="wav")
             
+            # Convert AudioSegment to numpy array
+            audio_samples = np.array(audio_segment.get_array_of_samples())
+
+            input_features = whisper_processor(audio_samples, sampling_rate=16000, return_tensors="pt", return_attention_mask=True)
+            input_features = input_features.to("cuda", dtype=float16)
+
+            attention_mask = input_features['attention_mask']
+            # Model inference with attention mask
+            pred_ids = whisper.generate(input_features.input_features, attention_mask=attention_mask, max_new_tokens=200)
+            # Decode the predicted IDs to get the transcription
+            pred_text = whisper_processor.batch_decode(pred_ids, skip_special_tokens=True)[0]
+            
+            print(f"transciption:\n{pred_text}")
+            # Append the transcription to the input text
+            input_text += pred_text
+    
         messages = [{
             "role": "user",
             "content": ''}]
@@ -163,8 +205,8 @@ class Model:
 
         generation_args = {
 		"max_new_tokens": 2048,
-		"temperature": 0.0,
-		"do_sample": False,}
+		"temperature": 0.1,
+		"do_sample": True,}
 
         generate_ids = self.model.generate(
             **inputs,
@@ -223,12 +265,10 @@ models = {}
 
 
 class LoadRequest(BaseModel):
-    '''Initial load request on start'''
+    '''Initial load request on start with default values'''
     num_gpus: int = 1
     models_per_gpu: int = 1
-    # Add model_id to specify which model to load
-    model_name: str = "/app/models/phi"
-    # model_name: str = "default-model-id"
+    model_name: str = "phi"
 
 
 @app.post("/load")
@@ -240,6 +280,7 @@ def load(request: LoadRequest):
     If not, it loads the model into memory and makes it available for processing.
     """
 
+    root_path = "/app/models/"
     if request.model_name not in models:
         for gpu_index in range(request.num_gpus):
             for _ in range(request.models_per_gpu):
@@ -247,9 +288,6 @@ def load(request: LoadRequest):
                 model = Model(model_path, gpu_index)
                 model.load()
                 models[request.model_name] = model
-
-    print('\load models', models)
-    print('\load request', request)
 
     return {"status": "200 OK", "model_name": request.model_name}
 
@@ -260,7 +298,7 @@ class PromptRequest(BaseModel):
     image: Optional[str] = None
     audio: Optional[str] = None
     text: str
-    model_name: str = "/app/models/phi"
+    model_name: str = "phi"
 
 
 @app.post("/prompt")

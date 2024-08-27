@@ -51,5 +51,7 @@ RUN nvidia-ctk runtime configure --runtime=docker
 # Expose the port that the application listens on.
 EXPOSE 8000
 
+EXPOSE 5678
+
 # Run the application.
 CMD uvicorn 'model_os:app' --host=0.0.0.0 --port=8000

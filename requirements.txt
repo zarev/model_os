@@ -8,3 +8,8 @@ transformers
 torch
 accelerate
 torchvision
+pydub
+debugpy
+numpy
+librosa
+soundfile
