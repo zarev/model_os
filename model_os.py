@@ -77,9 +77,11 @@ class Model:
         self.model_path = model_path
         self.model_type = AutoModelForCausalLM
         self.use_safetensors = None
+        self.model_name = "Phi-3-vision-128k-instruct"
         if model_path.count('whisper') == 1:
             self.model_type = AutoModelForSpeechSeq2Seq
             self.use_safetensors = True
+            self.model_name = "whisper"
         self.index = index
         self.loaded = False
         self.processor = None
@@ -89,8 +91,9 @@ class Model:
         """Loads model components"""
         # tensorflow model loading logic
         self.model = self.model_type.from_pretrained(
-            self.model_path,
-            cache_dir=self.model_path,
+            self.model_name,
+            # app root dir
+            cache_dir=self.model_path - self.model_name,
             use_safetensors=self.use_safetensors,
             device_map="cuda",
             trust_remote_code=True,
@@ -282,15 +285,14 @@ def load(request: LoadRequest) -> dict[str, str]:
     Loads specified models into memory during application startup.
     '''
 
+    root_path = "/app/models/"
     for gpu_index in range(request.num_gpus):
         for _ in range(request.models_per_gpu):
             # TODO: investigate how to stop shard loading
-            phi_path = "/app/models/phi"
-            phi = Model(phi_path, gpu_index)
+            phi = Model(root_path.join("Phi-3-vision-128k-instruct"), gpu_index)
             phi.load()
 
-            whisper_path = "/app/models/whisper"
-            whisper = Model(whisper_path, gpu_index)
+            whisper = Model(root_path.join("distil-large-v3"), gpu_index)
             phi.load()
 
             models[request.model_name] = phi
