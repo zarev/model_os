@@ -1,8 +1,9 @@
 """model_os module"""
 
-# uvicorn model_os:app --reload
+# uvicorn model_os:app --reload --host 0.0.0.0 --port 8000 
 # pylint: disable=fixme
 
+from os import path
 from io import BytesIO
 import queue
 import threading
@@ -24,13 +25,17 @@ from pydub import AudioSegment
 # print("Waiting for debugger to attach...")
 # debugpy.wait_for_client()
 
+PHI = "microsoft/Phi-3-vision-128k-instruct"
+WHISPER = "distil-whisper/distil-large-v3"
+ROOT_DIR = "."
+BASE_MODEL_PATH = "D:\\models\\"
+
 @asynccontextmanager
 async def lifespan(my_app: FastAPI):  # pylint: disable=unused-argument
     """Manages lifespan of app"""
     # Application startup
     # load models
-    load(LoadRequest(num_gpus=1, models_per_gpu=1, model_name="phi"))
-    load(LoadRequest(num_gpus=1, models_per_gpu=1, model_name="whisper"))
+    load(LoadRequest(num_gpus=1, models_per_gpu=1, model_name=PHI))
     yield
     # Application shutdown
     models.clear()
@@ -74,34 +79,63 @@ class Model:
             The index identifying the model instance.
         """
         self.model = None
+        self.whisper = None
+
         self.model_path = model_path
         self.model_type = AutoModelForCausalLM
         self.use_safetensors = None
-        self.model_name = "Phi-3-vision-128k-instruct"
-        if model_path.count('whisper') == 1:
+        self.model_name = PHI
+
+        # make load_whisper function
+        # create a recursive structure
+        # where models can have member models
+        # e.g. phi can have its own whisper,
+        # or... another phi. Agents that have
+        # their own agents
+        if 'distil' in self.model_path:
             self.model_type = AutoModelForSpeechSeq2Seq
             self.use_safetensors = True
-            self.model_name = "whisper"
+            self.model_name = WHISPER
         self.index = index
         self.loaded = False
         self.processor = None
         self.tokenizer_stream = None
+        self.revision = None
 
     def load(self):
         """Loads model components"""
-        # tensorflow model loading logic
+        # Phi-3-vision-128k-instruct
+        revision="c45209e"
+        if 'distil' in self.model_path:
+            #whisper distil revision
+            revision="871351a"
+
+        import os
+        configExists = os.path.exists(os.path.join(self.model_path, 'config.json'))
+
+        if not configExists:
+            print(f"Config file not found in {self.model_path}")
+            return
+
         self.model = self.model_type.from_pretrained(
-            self.model_name,
-            # app root dir
-            cache_dir=self.model_path - self.model_name,
+            self.model_path,
+            revision=revision,
+            cache_dir=self.model_path,
             use_safetensors=self.use_safetensors,
             device_map="cuda",
             trust_remote_code=True,
             torch_dtype="auto",
             # Use _attn_implementation='eager' to disable flash attention, or 'flash_attention_2'
-            _attn_implementation="eager")
+            _attn_implementation="eager",
+            local_files_only=True)
 
-        self.processor = AutoProcessor.from_pretrained(self.model_path, trust_remote_code=True)
+        self.processor = AutoProcessor.from_pretrained(
+            self.model_path,
+            trust_remote_code=True,
+            revision=revision,
+            cache_dir=path.dirname(self.model_path),
+            local_files_only=True)
+
         self.loaded = True
 
     def run(self, input_data: tuple[Optional[str], Optional[str], str], output: queue.Queue) -> None:
@@ -143,17 +177,17 @@ class Model:
         if input_audio:
 
             audio_samples = process_audio(input_audio)
-            input_features = models['whisper'].processor(audio_samples, 
-                                                            sampling_rate=16000, 
-                                                            return_tensors="pt", 
-                                                            return_attention_mask=True)
+            input_features = models[WHISPER].processor(audio_samples,
+                                                        sampling_rate=16000,
+                                                        return_tensors="pt",
+                                                        return_attention_mask=True)
 
             input_features = input_features.to("cuda", dtype=float16)
 
             # Model inference with attention mask
-            pred_ids = models["whisper"].model.generate(input_features.input_features, max_new_tokens=500)
+            pred_ids = models[WHISPER].model.generate(input_features.input_features, max_new_tokens=440)
             # Decode the predicted IDs to get the transcription
-            pred_text = models['whisper'].processor.batch_decode(pred_ids, skip_special_tokens=True)[0]
+            pred_text = models[WHISPER].processor.batch_decode(pred_ids, skip_special_tokens=True)[0]
 
             # Append the transcription to the input text
             input_text += pred_text
@@ -263,7 +297,10 @@ def process_audio(input_audio: str) -> array: #np.array
             arr_contents = frombuffer(b64_bytes, dtype=float32)
             audio_array_int16 = (arr_contents * 32768).astype(int16)
             audio_segment = AudioSegment(data=audio_array_int16.tobytes(), sample_width=2, frame_rate=44100, channels=1)
+            audio_segment.export('output_file', format="wav")
             audio_segment = audio_segment.set_frame_rate(16000)
+            
+
             audio_samples = array(audio_segment.get_array_of_samples())
 
             return audio_samples
@@ -285,18 +322,22 @@ def load(request: LoadRequest) -> dict[str, str]:
     Loads specified models into memory during application startup.
     '''
 
-    root_path = "/app/models/"
-    for gpu_index in range(request.num_gpus):
-        for _ in range(request.models_per_gpu):
-            # TODO: investigate how to stop shard loading
-            phi = Model(root_path.join("Phi-3-vision-128k-instruct"), gpu_index)
-            phi.load()
+    phi_base_name = PHI.rsplit('/', maxsplit=1)[-1]
+    phi_path = f"{BASE_MODEL_PATH}\\{phi_base_name}\\"
+    
+    whisper_base_name = WHISPER.rsplit('/', maxsplit=1)[-1]
+    whisper_path = f"{BASE_MODEL_PATH}\\{whisper_base_name}\\"
 
-            whisper = Model(root_path.join("distil-large-v3"), gpu_index)
-            phi.load()
+    whisper = Model(whisper_path, 0)
+    whisper.load()
 
-            models[request.model_name] = phi
-            models[request.model_name] = whisper
+    phi = Model(phi_path, 0)
+    phi.load()
+
+    models[PHI] = phi
+    models[WHISPER] = whisper
+
+    print(f"models: {models}")
 
     return {"status": "200 OK", "model_name": request.model_name}
 
@@ -323,7 +364,8 @@ def prompt(request: PromptRequest):
         raise HTTPException(
             status_code=404, detail="Model not found but tried to prompt.")
 
-    model = models[request.model_name]
+    # always route through phi
+    model = models[PHI]
 
     request_prompt = request.text
 

@@ -51,6 +51,7 @@ RUN nvidia-ctk runtime configure --runtime=docker
 # Expose the port that the application listens on.
 EXPOSE 8000
 
+# Debugging port
 EXPOSE 5678
 
 # Run the application.
