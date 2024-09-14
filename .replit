@@ -15,6 +15,22 @@ author = "agent"
 task = "workflow.run"
 args = "Run FastAPI App"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Git Log"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Make git_history.sh executable"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Add and commit git_history.sh"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Run git_history.sh"
+
 [[workflows.workflow]]
 name = "Run FastAPI App"
 author = "agent"
@@ -26,6 +42,50 @@ agentRequireRestartOnSave = false
 task = "shell.exec"
 args = "uvicorn main:app --host 0.0.0.0 --port 8000"
 waitForPort = 8000
+
+[[workflows.workflow]]
+name = "Git Log"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git log -n 10 --pretty=format:'%h - %an, %ar : %s'"
+
+[[workflows.workflow]]
+name = "Make git_history.sh executable"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "chmod +x git_history.sh"
+
+[[workflows.workflow]]
+name = "Add and commit git_history.sh"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git add git_history.sh && git commit -m 'Add git_history.sh script'"
+
+[[workflows.workflow]]
+name = "Run git_history.sh"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "./git_history.sh"
 
 [deployment]
 run = ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
