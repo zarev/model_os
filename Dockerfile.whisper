@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1
+
+ARG PYTHON_VERSION=3.12.3
+
+FROM nvidia/cuda:12.1.1-base-ubuntu22.04 as base
+
+RUN apt-get update && \
+    apt-get install -y python3-pip python3-dev python-is-python3 lsb-release && \
+    rm -rf /var/lib/apt/lists/*
+
+# Prevents Python from writing pyc files.
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Keeps Python from buffering stdout and stderr to avoid situations where
+# the application crashes without emitting any logs due to buffering.
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Add the NVIDIA package repositories and install the GPG key
+RUN distribution=$(lsb_release -cs) && \
+    curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
+    tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && \
+    curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | \
+    tee /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+# Update package lists and install NVIDIA Container Toolkit
+RUN apt-get update && \
+    apt-get install -y \
+    nvidia-container-toolkit
+
+# Configure Docker to use the NVIDIA runtime
+RUN nvidia-ctk runtime configure --runtime=docker
+
+# Make port 8001 available to the world outside this container
+EXPOSE 8001
+
+# Define environment variable
+ENV MODEL_NAME=WHISPER
+
+# Run app.py when the container launches
+CMD ["python", "whisper_service.py"]

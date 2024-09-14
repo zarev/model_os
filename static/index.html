@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Model Inference</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>AI Model Inference</h1>
+    <form id="inferenceForm">
+        <label for="text">Text Input:</label><br>
+        <textarea id="text" name="text" rows="4" cols="50"></textarea><br>
+        <label for="image">Image Input (optional):</label><br>
+        <input type="file" id="image" name="image" accept="image/*"><br>
+        <label for="audio">Audio Input (optional):</label><br>
+        <input type="file" id="audio" name="audio" accept="audio/*"><br>
+        <button type="submit">Submit</button>
+    </form>
+    <div id="response"></div>
+
+    <script>
+        document.getElementById('inferenceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('text').value;
+            const imageFile = document.getElementById('image').files[0];
+            const audioFile = document.getElementById('audio').files[0];
+
+            let imageBase64 = null;
+            if (imageFile) {
+                imageBase64 = await fileToBase64(imageFile);
+            }
+
+            let audioBase64 = null;
+            if (audioFile) {
+                audioBase64 = await fileToBase64(audioFile);
+            }
+
+            try {
+                const response = await axios.post('/prompt', {
+                    text: text,
+                    image: imageBase64,
+                    audio: audioBase64,
+                    model_name: "phi"
+                });
+                document.getElementById('response').innerText = response.data.response;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('response').innerText = 'An error occurred. Please try again.';
+            }
+        });
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+    </script>
+</body>
+</html>
