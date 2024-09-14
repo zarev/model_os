@@ -31,6 +31,10 @@ args = "Add and commit git_history.sh"
 task = "workflow.run"
 args = "Run git_history.sh"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Interactive Rebase"
+
 [[workflows.workflow]]
 name = "Run FastAPI App"
 author = "agent"
@@ -86,6 +90,17 @@ agentRequireRestartOnSave = false
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "./git_history.sh"
+
+[[workflows.workflow]]
+name = "Interactive Rebase"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git rebase -i HEAD~3"
 
 [deployment]
 run = ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
