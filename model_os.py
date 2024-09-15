@@ -1,6 +1,6 @@
 """model_os module"""
 
-# uvicorn model_os:app --reload --host 0.0.0.0 --port 8000 
+# uvicorn model_os:app --reload --host 0.0.0.0 --port 8000
 # pylint: disable=fixme
 
 from os import path
@@ -19,7 +19,6 @@ from transformers import AutoModelForCausalLM, AutoProcessor, AutoModelForSpeech
 from numpy import float32, int16, array, frombuffer
 from pydub import AudioSegment
 
-
 # import debugpy
 # debugpy.listen(("0.0.0.0", 5678))
 # print("Waiting for debugger to attach...")
@@ -28,7 +27,9 @@ from pydub import AudioSegment
 PHI = "microsoft/Phi-3-vision-128k-instruct"
 WHISPER = "distil-whisper/distil-large-v3"
 ROOT_DIR = "."
-BASE_MODEL_PATH = "D:\\models\\"
+HOME_PATH = path.expanduser("~")
+BASE_MODEL_PATH = path.join(HOME_PATH, 'models')
+
 
 @asynccontextmanager
 async def lifespan(my_app: FastAPI):  # pylint: disable=unused-argument
@@ -40,7 +41,9 @@ async def lifespan(my_app: FastAPI):  # pylint: disable=unused-argument
     # Application shutdown
     models.clear()
 
+
 app = FastAPI(lifespan=lifespan)
+
 
 class Model:
     """
@@ -105,13 +108,14 @@ class Model:
     def load(self):
         """Loads model components"""
         # Phi-3-vision-128k-instruct
-        revision="c45209e"
+        revision = "c45209e"
         if 'distil' in self.model_path:
             #whisper distil revision
-            revision="871351a"
+            revision = "871351a"
 
         import os
-        configExists = os.path.exists(os.path.join(self.model_path, 'config.json'))
+        configExists = os.path.exists(
+            os.path.join(self.model_path, 'config.json'))
 
         if not configExists:
             print(f"Config file not found in {self.model_path}")
@@ -129,16 +133,17 @@ class Model:
             _attn_implementation="eager",
             local_files_only=True)
 
-        self.processor = AutoProcessor.from_pretrained(
-            self.model_path,
-            trust_remote_code=True,
-            revision=revision,
-            cache_dir=path.dirname(self.model_path),
-            local_files_only=True)
+        self.processor = AutoProcessor.from_pretrained(self.model_path,
+                                                       trust_remote_code=True,
+                                                       revision=revision,
+                                                       cache_dir=path.dirname(
+                                                           self.model_path),
+                                                       local_files_only=True)
 
         self.loaded = True
 
-    def run(self, input_data: tuple[Optional[str], Optional[str], str], output: queue.Queue) -> None:
+    def run(self, input_data: tuple[Optional[str], Optional[str], str],
+            output: queue.Queue) -> None:
         """
         Processes input text, image, and audio using the loaded model and generates a response.
         
@@ -177,24 +182,25 @@ class Model:
         if input_audio:
 
             audio_samples = process_audio(input_audio)
-            input_features = models[WHISPER].processor(audio_samples,
-                                                        sampling_rate=16000,
-                                                        return_tensors="pt",
-                                                        return_attention_mask=True)
+            input_features = models[WHISPER].processor(
+                audio_samples,
+                sampling_rate=16000,
+                return_tensors="pt",
+                return_attention_mask=True)
 
             input_features = input_features.to("cuda", dtype=float16)
 
             # Model inference with attention mask
-            pred_ids = models[WHISPER].model.generate(input_features.input_features, max_new_tokens=440)
+            pred_ids = models[WHISPER].model.generate(
+                input_features.input_features, max_new_tokens=440)
             # Decode the predicted IDs to get the transcription
-            pred_text = models[WHISPER].processor.batch_decode(pred_ids, skip_special_tokens=True)[0]
+            pred_text = models[WHISPER].processor.batch_decode(
+                pred_ids, skip_special_tokens=True)[0]
 
             # Append the transcription to the input text
             input_text += pred_text
-    
-        messages = [{
-            "role": "user",
-            "content": ''}]
+
+        messages = [{"role": "user", "content": ''}]
 
         image_obj = None
         # If there is image load it and add tag to prompt
@@ -206,12 +212,12 @@ class Model:
         messages[0]["content"] += f"{input_text}"
 
         templated_prompt = self.processor.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True)
+            messages, tokenize=False, add_generation_prompt=True)
 
         try:
-            inputs = self.processor(templated_prompt, image_obj, return_tensors="pt").to("cuda:0")
+            inputs = self.processor(templated_prompt,
+                                    image_obj,
+                                    return_tensors="pt").to("cuda:0")
 
         except RuntimeError as e:
             # for some reason the error only goes to output
@@ -223,9 +229,10 @@ class Model:
             return
 
         generation_args = {
-		"max_new_tokens": 2048,
-		"temperature": 0.1,
-		"do_sample": True,}
+            "max_new_tokens": 2048,
+            "temperature": 0.1,
+            "do_sample": True,
+        }
 
         generate_ids = self.model.generate(
             **inputs,
@@ -243,7 +250,8 @@ class Model:
         output.put(response)
         output.put(None)
 
-    def generate(self, image: Optional[str], audio: Optional[str], text: str) -> str:
+    def generate(self, image: Optional[str], audio: Optional[str],
+                 text: str) -> str:
         """
         Runs the `run` method in a separate thread and retrieves the result.
         
@@ -259,8 +267,8 @@ class Model:
         str: The processing result or an error message.
         """
         output = queue.Queue()
-        thread = threading.Thread(
-            target=self.run, args=((image, audio, text), output))
+        thread = threading.Thread(target=self.run,
+                                  args=((image, audio, text), output))
         thread.daemon = True
         thread.start()
 
@@ -269,21 +277,22 @@ class Model:
             try:
                 text = output.get()
                 if text is None:
-                    output.put(
-                        'Error: Empty response')
+                    output.put('Error: Empty response')
                     break
                 result.append(text)
             except queue.Empty:
                 output.put('''Error: No response received from the thread.
                            The processing might be taking longer than expected.
-                           Consider checking the model, inputs, and system resources.''')
+                           Consider checking the model, inputs, and system resources.'''
+                           )
                 break
 
         thread.join()
         return "".join(result)
 
-def process_audio(input_audio: str) -> array: #np.array
-            """
+
+def process_audio(input_audio: str) -> array:  #np.array
+    """
             Decodes a base64-encoded audio string, converts it to an audio segment,
             resamples it to 16 kHz, and returns the audio samples as a NumPy array.
 
@@ -293,17 +302,20 @@ def process_audio(input_audio: str) -> array: #np.array
             Returns:
                 numpy.ndarray: An array of audio samples.
             """
-            b64_bytes = base64.b64decode(input_audio)
-            arr_contents = frombuffer(b64_bytes, dtype=float32)
-            audio_array_int16 = (arr_contents * 32768).astype(int16)
-            audio_segment = AudioSegment(data=audio_array_int16.tobytes(), sample_width=2, frame_rate=44100, channels=1)
-            audio_segment.export('output_file', format="wav")
-            audio_segment = audio_segment.set_frame_rate(16000)
-            
+    b64_bytes = base64.b64decode(input_audio)
+    arr_contents = frombuffer(b64_bytes, dtype=float32)
+    audio_array_int16 = (arr_contents * 32768).astype(int16)
+    audio_segment = AudioSegment(data=audio_array_int16.tobytes(),
+                                 sample_width=2,
+                                 frame_rate=44100,
+                                 channels=1)
+    audio_segment.export('output_file', format="wav")
+    audio_segment = audio_segment.set_frame_rate(16000)
 
-            audio_samples = array(audio_segment.get_array_of_samples())
+    audio_samples = array(audio_segment.get_array_of_samples())
 
-            return audio_samples
+    return audio_samples
+
 
 # Store loaded models in a dictionary
 models = {}
@@ -322,11 +334,11 @@ def load(request: LoadRequest) -> dict[str, str]:
     Loads specified models into memory during application startup.
     '''
 
-    phi_base_name = PHI.rsplit('/', maxsplit=1)[-1]
-    phi_path = f"{BASE_MODEL_PATH}\\{phi_base_name}\\"
-    
+    phi_base_name = PHI.rsplit('/', maxsplit=1)[-1].join('/')
+    phi_path = path.join(BASE_MODEL_PATH, phi_base_name)
+
     whisper_base_name = WHISPER.rsplit('/', maxsplit=1)[-1]
-    whisper_path = f"{BASE_MODEL_PATH}\\{whisper_base_name}\\"
+    whisper_path = path.join(BASE_MODEL_PATH, whisper_base_name)
 
     whisper = Model(whisper_path, 0)
     whisper.load()
@@ -361,8 +373,8 @@ def prompt(request: PromptRequest):
     """
 
     if request.model_name not in models:
-        raise HTTPException(
-            status_code=404, detail="Model not found but tried to prompt.")
+        raise HTTPException(status_code=404,
+                            detail="Model not found but tried to prompt.")
 
     # always route through phi
     model = models[PHI]
@@ -377,6 +389,8 @@ def prompt(request: PromptRequest):
     if request.image is not None:
         image = request.image
 
-    response_text = model.generate(image=image, text=request_prompt, audio=audio)
+    response_text = model.generate(image=image,
+                                   text=request_prompt,
+                                   audio=audio)
 
     return {"response": response_text}
