@@ -1,0 +1,8 @@
+{
+current_datetime,
+user: {user_message},
+ai: {ai_message},
+// +1 every turn
+// resets when problem solved
+num_chains: 0, 
+},
