@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.openssh
     pkgs.ffmpeg-full
     pkgs.zlib
     pkgs.tk
