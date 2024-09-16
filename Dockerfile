@@ -41,12 +41,12 @@ RUN distribution=$(lsb_release -cs) && \
     tee /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
 # Update package lists and install NVIDIA Container Toolkit
-RUN apt-get update && \
-    apt-get install -y \
-    nvidia-container-toolkit
+# RUN apt-get update && #\
+    # apt-get install -y \
+    # nvidia-driver-560 \
+    # nvidia-container-toolkit
 
 # Configure Docker to use the NVIDIA runtime
-RUN nvidia-ctk runtime configure --runtime=docker
 
 # Expose the port that the application listens on.
 EXPOSE 8000
