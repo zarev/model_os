@@ -211,6 +211,8 @@ class Model:
 
         messages[0]["content"] += f"{input_text}"
 
+        print("run self", self)
+
         templated_prompt = self.processor.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True)
 
