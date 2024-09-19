@@ -14,8 +14,8 @@
           - WHISPER_SERVICE_URL=http://whisper_service:8001
         depends_on:
           - phi_service
-          - whisper_service
-          - webhook_listener
+          # - whisper_service
+          # - webhook_listener
 
       phi_service:
         build:
@@ -25,22 +25,22 @@
           - ./phi_service:/app
           - ./models:/app/models
 
-      whisper_service:
-        build:
-          context: .
-          dockerfile: whisper_service/Dockerfile.whisper
-        volumes:
-          - ./whisper_service:/app
-          - ./models:/app/models
+      # whisper_service:
+      #   build:
+      #     context: .
+      #     dockerfile: whisper_service/Dockerfile.whisper
+      #   volumes:
+      #     - ./whisper_service:/app
+      #     - ./models:/app/models
 
-      webhook_listener:
-        build:
-          context: ./webhook_listener
-          dockerfile: Dockerfile
-        ports:
-          - "5001:5001"
-        volumes:
-          - ./webhook_listener:/app
+      # webhook_listener:
+      #   build:
+      #     context: ./webhook_listener
+      #     dockerfile: Dockerfile
+      #   ports:
+      #     - "5001:5001"
+      #   volumes:
+      #     - ./webhook_listener:/app
 
     networks:
       default:

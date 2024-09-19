@@ -1,7 +1,12 @@
 """WHISPER model service"""
-
+import sys
+import os
 import logging
 from fastapi import FastAPI, HTTPException
+
+# Add parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from models import Model
 from config import WHISPER, BASE_MODEL_PATH
 from utils import process_audio
