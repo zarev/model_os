@@ -1,44 +1,47 @@
-version: '3'
-services:
-  model_os:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./models:/app/models
-    environment:
-      - PHI_SERVICE_URL=http://phi_service:8000
-      - WHISPER_SERVICE_URL=http://whisper_service:8001
-    depends_on:
-      - phi_service
-      - whisper_service
+    version: '3'
+    services:
+      model_os:
+        build:
+          context: .
+          dockerfile: Dockerfile
+        ports:
+          - "8000:8000"
+        volumes:
+          - .:/app
+        environment:
+          - FLASK_ENV=development
+          - PHI_SERVICE_URL=http://phi_service:8000
+          - WHISPER_SERVICE_URL=http://whisper_service:8001
+        depends_on:
+          - phi_service
+          - whisper_service
+          - webhook_listener
 
-  phi_service:
-    build:
-      context: .
-      dockerfile: Dockerfile.phi
-    ports:
-      - "8001:8000"
-    volumes:
-      - ./models:/app/models
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
+      phi_service:
+        build:
+          context: .
+          dockerfile: Dockerfile.phi
+        volumes:
+          - ./phi_service:/app
+          - ./models:/app/models
 
-  whisper_service:
-    build:
-      context: .
-      dockerfile: Dockerfile.whisper
-    ports:
-      - "8002:8001"
-    volumes:
-      - ./models:/app/models
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
+      whisper_service:
+        build:
+          context: .
+          dockerfile: whisper_service/Dockerfile.whisper
+        volumes:
+          - ./whisper_service:/app
+          - ./models:/app/models
+
+      webhook_listener:
+        build:
+          context: ./webhook_listener
+          dockerfile: Dockerfile
+        ports:
+          - "5001:5001"
+        volumes:
+          - ./webhook_listener:/app
+
+    networks:
+      default:
+        driver: bridge
