@@ -2,33 +2,40 @@
 import sys
 import os
 import logging
+import threading
 from fastapi import FastAPI, HTTPException
 
-# Add parent directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from models import Model
+from models.models import load_whisper_model
 from config import WHISPER, BASE_MODEL_PATH
 from utils import process_audio
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-model = None
+whisper_model = None
+
+def load_model():
+    """Function to load the WHISPER model."""
+    global whisper_model
+    try:
+        whisper_model = load_whisper_model()
+        logger.info("WHISPER model loaded successfully.")
+    except Exception as e:
+        logger.error(f"Error loading WHISPER model: {str(e)}")
 
 @app.post("/load")
 async def load():
     """Loads the WHISPER model."""
-    global model
     try:
-        model_path = f"{BASE_MODEL_PATH}/{WHISPER.split('/')[-1]}"
-        model = Model(model_path, 0)
-        model.load()
+        load_model()
         return {"status": "200 OK", "message": "WHISPER model loaded successfully"}
     except Exception as e:
-        logger.error(f"Error loading WHISPER model: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error loading WHISPER model: {str(e)}")
+
+# Load the model in a background thread to avoid blocking startup
+threading.Thread(target=load_model).start()
 
 @app.post("/transcribe")
 async def transcribe(audio: str):

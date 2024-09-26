@@ -18,7 +18,7 @@ class PromptRequest(BaseModel):
     image: Optional[str] = None
     audio: Optional[str] = None
     text: str
-    model_name: str = "phi"
+    model_name: Optional[str] = "phi"
 
 def process_audio(input_audio: str) -> np.array:
     """
