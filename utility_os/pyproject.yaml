@@ -1,0 +1,35 @@
+[project]
+name = "utility_os"
+description = "Utility OS for Model OS, allowing to run and manage the system."
+license = {text = "MIT License"}
+readme = "README.md"
+authors = [
+  {name = "Simon Renault", email = "hexifox@model.os"},
+  {name = "Mariyan Zarev", email = "mzarev1@model.os"}
+]
+dynamic = ["version"]
+requires-python = ">=3.9"
+dependencies = [
+  "setuptools>=61",
+  "py-cpuinfo",
+  "distro",
+  "psutil",
+  "gputil",
+  "rich >= 11.0.0",
+  "textual >= 0.80.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools.dynamic]
+version = {attr = "utility_os.__about__.__version__"}
+
+[project.urls]
+
+[project.scripts]
+utility_os = "utility_os._app:run"
