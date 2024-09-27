@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+
+ARG PYTHON_VERSION=3.12.3-slim
+
+FROM nvidia/cuda:12.1.1-base-ubuntu22.04 as base
+
+# Prevents Python from writing pyc files.
+ENV PYTHONDONTWRITEBYTECODE=1
+# Keeps Python from buffering stdout and stderr to avoid situations where
+# the application crashes without emitting any logs due to buffering.
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=app/
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y python3-pip python3-dev python-is-python3 lsb-release && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install any needed packages specified in requirements.txt
+COPY requirements.txt /app/
+
+# Install any needed packages specified in requirements.txt
+RUN pip install -r requirements.txt
+
+# Copy the current directory contents into the container at /app
+COPY phi_service/ /app/phi_service/
+
+# Add the NVIDIA package repositories and install the GPG key
+RUN distribution=$(lsb_release -cs) && \
+    curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
+    tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && \
+    curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | \
+    tee /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+# Update package lists and install NVIDIA Container Toolkit
+# RUN apt-get update && #\
+    # apt-get install -y \
+    # nvidia-driver-560 \
+    # nvidia-container-toolkit
+
+# Configure Docker to use the NVIDIA runtime
+# RUN nvidia-ctk runtime configure --runtime=docker
+
+# Make port 8000 available to the world outside this container
+EXPOSE 8000
+
+# Define environment variable
+ENV MODEL_NAME=PHI
+
+# Run app.py when the container launches
+CMD ["uvicorn", "phi_service.phi_service:app", "--host", "0.0.0.0", "--port", "8000"]

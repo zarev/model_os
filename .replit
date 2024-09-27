@@ -1,0 +1,161 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Run FastAPI App"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Git Log"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Make git_history.sh executable"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Add and commit git_history.sh"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Run git_history.sh"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Interactive Rebase"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Add and commit files"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Check git log"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Configure git and commit files"
+
+[[workflows.workflow]]
+name = "Run FastAPI App"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "uvicorn main:app --host 0.0.0.0 --port 8000"
+waitForPort = 8000
+
+[[workflows.workflow]]
+name = "Git Log"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git log -n 10 --pretty=format:'%h - %an, %ar : %s'"
+
+[[workflows.workflow]]
+name = "Make git_history.sh executable"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "chmod +x git_history.sh"
+
+[[workflows.workflow]]
+name = "Add and commit git_history.sh"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git add git_history.sh && git commit -m 'Add git_history.sh script'"
+
+[[workflows.workflow]]
+name = "Run git_history.sh"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "./git_history.sh"
+
+[[workflows.workflow]]
+name = "Interactive Rebase"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git rebase -i HEAD~3"
+
+[[workflows.workflow]]
+name = "Add and commit files"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git add git_history.sh .replit && git commit -m 'Add git_history.sh and .replit files'"
+
+[[workflows.workflow]]
+name = "Check git log"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "git log -n 1 --pretty=format:'%h - %an, %ar : %s'"
+
+[[workflows.workflow]]
+name = "Configure git and commit files"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = """
+
+    git config --global user.email \"noreply@example.com\" &&
+    git config --global user.name \"Replit AI Agent\" &&
+    git add git_history.sh .replit &&
+    git commit -m 'Add git_history.sh and .replit files'
+    """
+
+[deployment]
+run = ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
+
+[[ports]]
+localPort = 8000
+externalPort = 80

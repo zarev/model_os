@@ -1,0 +1,68 @@
+    version: '3'
+    services:
+      model_os:
+        build:
+          context: .
+          dockerfile: Dockerfile
+        ports:
+          - "8000:8000"
+        volumes:
+          - .:/app
+        environment:
+          - FLASK_ENV=development
+          - PHI_SERVICE_URL=http://phi_service:8000
+          - WHISPER_SERVICE_URL=http://whisper_service:8001
+        depends_on:
+          - phi_service
+          # - whisper_service
+          # - webhook_listener
+
+      phi_service:
+        build:
+          context: .
+          dockerfile: ./phi_service/Dockerfile.phi
+        ports:
+          - "8001:8000"
+        environment: #instead of config file for now
+          - PYTHONPATH=/app # Set PYTHONPATH to include /app
+          - PHI_MODEL_NAME=microsoft/Phi-3-vision-128k-instruct
+          - WHISPER_MODEL_NAME=distil-whisper/distil-large-v3
+          - BASE_MODEL_PATH=/app/model_tensors/
+        volumes:
+          - ./phi_service:/app/phi_service
+          - /home/m/models/:/app/model_tensors/:ro # server-side model folders from huggingface, read-only
+          - ./models/:/app/models #internal server model definitions
+          - ./utils.py:/app/utils.py
+        deploy:
+          resources:
+            reservations:
+               devices:
+                 - capabilities: [gpu]
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+          interval: 600s
+          timeout: 10s
+          retries: 3
+
+
+      # whisper_service:
+      #   build:
+      #     context: ./whisper_service
+      #     dockerfile: Dockerfile.whisper
+      #   
+            #volumes:
+      #     - ./whisper_service:/app
+      #     - ./models:/app/models
+
+      # webhook_listener:
+      #   build:
+      #     context: ./webhook_listener
+      #     dockerfile: Dockerfile
+      #   ports:
+      #     - "5001:5001"
+      #   volumes:
+      #     - ./webhook_listener:/app
+
+    networks:
+      default:
+        driver: bridge

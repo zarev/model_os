@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  termux-native:
+    build: .
+    container_name: termux-native
+    ports:
+      - "3333:33"  # Maps port 3333 on your host to port 33 in the container for SSH access
+    volumes:
+      - ./data:/root  # Mounts a local directory to the container's root for persistence
+    restart: unless-stopped

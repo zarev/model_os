@@ -11,7 +11,7 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Optional
 import base64
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from PIL import Image
 from pydub import AudioSegment
@@ -19,7 +19,6 @@ from torch import float16
 from transformers import AutoModelForCausalLM, AutoProcessor, AutoModelForSpeechSeq2Seq
 from numpy import float32, int16, array, frombuffer
 from pydub import AudioSegment
-import httpx
 
 from config import *
 from utils import PromptRequest, LoadRequest
@@ -39,14 +38,19 @@ WHISPER_SERVICE_URL = os.getenv("WHISPER_SERVICE_URL", "Endpoint not found or no
 async def lifespan(my_app: FastAPI):  # pylint: disable=unused-argument
     """Manages lifespan of app"""
     # Application startup
+    # load models
+    load_phi_model()
     yield
+    # Application shutdown
+    models.clear()
+
 
 app = FastAPI(lifespan=lifespan)
 
-model_enpoint = "generate"
+model_enpoint = "prompt"
 
 @app.post("/process")
-async def process_request(request: Request):
+async def process_request(request: PromptRequest):
     try:
         # Determine if the request contains an image or text
         content_type = request.headers.get("Content-Type")
@@ -68,11 +72,12 @@ async def process_request(request: Request):
                 return response.json()
         elif "application/json" in content_type:
             data = await request.json()
-            if "image" in data or "text" in data:
-                # Forward to phi_service with image URL
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(f"{PHI_SERVICE_URL}/{model_enpoint}", json=data)
-                return response.json()
+	        if "image" in data or "text" in data:
+
+                    # Forward to phi_service with image URL
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(f"{PHI_SERVICE_URL}/{model_enpoint}", json=data)
+                    return response.json()
         else:
             raise HTTPException(status_code=400, detail="Unsupported Content-Type")
     except Exception as e:
