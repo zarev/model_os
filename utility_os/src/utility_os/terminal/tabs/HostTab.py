@@ -17,6 +17,7 @@ from terminal.widgets.docker._system import DockerInfo
 from terminal.widgets.docker._images import DockerImages
 from terminal.widgets.docker._volumes import DockerVolumes
 ### -- Host info
+from terminal.widgets.info._gpu import GPU
 from terminal.widgets.info._cpu import CPU
 from terminal.widgets.info._disk import Disk
 from terminal.widgets.info._mem import Mem
@@ -40,10 +41,7 @@ class HostTab(Container):
                 cnt.border_title = "[b]Info[/]"
                 with cnt:
                     yield DockerInfo()
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]GPU[/]"
-                with cnt:
-                    yield Static("Placeholder")
+                yield GPU()
                 yield CPU()
                 yield Mem()
                 yield Net(self.args.net)

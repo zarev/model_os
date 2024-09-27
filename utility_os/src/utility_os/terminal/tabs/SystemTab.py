@@ -106,6 +106,14 @@ class SystemTab(Container):
                 cnt.border_title = "[b]svc6[/]"
                 with cnt:
                     yield Static("Test")
+                cnt = Container(classes="titled-container")
+                cnt.border_title = "[b]svc7[/]"
+                with cnt:
+                    yield Static("Test")
+                cnt = Container(classes="titled-container")
+                cnt.border_title = "[b]svc8[/]"
+                with cnt:
+                    yield Static("Test")
             with VerticalScroll(id="tab-pane"):
                yield Service()
                yield Service()

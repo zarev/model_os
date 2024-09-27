@@ -30,7 +30,7 @@ class DockerInfo(Widget):
         info_table.add_column("Value")
         info_table.add_row(
             Text('Available CPU', style=""),
-            Text(f"{self.data['info'].n_cpu} cores", style=""),
+            Text(f"{self.data['info'].n_cpu} threads", style=""),
         )
         info_table.add_row(
             Text('Available MEM', style=""),
