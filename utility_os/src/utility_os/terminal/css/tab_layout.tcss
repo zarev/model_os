@@ -1,0 +1,28 @@
+#tab-grid {
+    layout: grid;
+    grid-size: 3;  /* two columns */
+    grid-columns: 1fr;
+    grid-rows: 1fr;
+    
+}
+
+#tab-main {
+    height: 100%;
+    width: 2fr;
+    column-span: 2;
+    layout: grid;
+    grid-size: 3;
+    grid-columns: 1fr;
+    grid-rows: 1fr;
+    grid-gutter: 1;
+    background: $panel;
+    border: greenyellow;
+}
+
+#tab-pane {
+    height: 100%;
+    width: 1fr;
+    column-span: 1;
+    background: $panel;
+    border: dodgerblue;
+}

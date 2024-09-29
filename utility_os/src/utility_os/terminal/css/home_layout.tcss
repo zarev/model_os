@@ -1,0 +1,155 @@
+#app-grid {
+    layout: grid;
+    grid-size: 1 8;  /* two columns */
+    grid-columns: 1fr;
+    grid-rows: 1fr;
+}
+
+#tabs-buttons {
+    align: left top;
+    background: $panel;
+
+    Button {
+        color: cyan;
+        border: round $accent;
+        background: $panel;
+    }
+
+    Button :hover {
+        color: white;
+    }
+}
+
+#tabs-info {
+    padding: 1;
+    background: $panel;
+
+    * {
+        text-align: right;
+        padding: 0 2;
+    }
+}
+
+ContentSwitcher {
+    row-span: 7;
+    background: $panel;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+#tab-grid {
+    layout: grid;
+    grid-size: 3;  /* two columns */
+    grid-columns: 1fr;
+    grid-rows: 1fr;
+    border: none;
+    padding: 0;
+}
+
+
+#tab-main {
+    height: 100%;
+    width: 2fr;
+    column-span: 2;
+    layout: grid;
+    grid-size: 4 2;
+    grid-columns: 1fr;
+    grid-rows: 1fr 2fr;
+    grid-gutter: 0;
+    background: $panel;
+    border: none;
+    padding: 0;
+}
+
+#tab-main-eq{
+    height: 100%;
+    width: 2fr;
+    column-span: 2;
+    layout: grid;
+    grid-size: 4 2;
+    grid-columns: 1fr;
+    grid-rows: 1fr;
+    grid-gutter: 0;
+    background: $panel;
+    border: none;
+    padding: 0;
+}
+
+#info-grid {
+    column-span: 3;
+}
+
+#info-tab {
+    layout: grid;
+    grid-size: 3 1;
+}
+
+.titled-container{
+    border: lightgrey;
+    border-title-align: left;
+}
+
+#tab-pane {
+    height: 100%;
+    width: 1fr;
+    column-span: 1;
+    background: $panel;
+    border: none;
+    padding: 0;
+}
+
+
+Service {
+    layout: horizontal;
+    background: $boost;
+    height: 5;
+    margin: 1;
+    min-width: 50;
+    padding: 1;
+}
+
+TimeDisplay {
+    content-align: center middle;
+    text-opacity: 60%;
+    height: 3;
+}
+
+Button {
+    width: 16;
+}
+
+#start {
+    dock: left;
+}
+
+#stop {
+    dock: left;
+    display: none;
+}
+
+#reset {
+    dock: right;
+}
+
+.started {
+    text-style: bold;
+    background: $success;
+    color: $text;
+}
+
+.started TimeDisplay {
+    text-opacity: 100%;
+}
+
+.started #start {
+    display: none
+}
+
+.started #stop {
+    display: block
+}
+
+.started #reset {
+    visibility: hidden
+}

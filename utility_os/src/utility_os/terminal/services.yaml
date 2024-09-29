@@ -1,0 +1,34 @@
+services:
+  - webserver:
+      image: nginx
+      versions: latest
+      type: interface
+      memory: 256
+      disk: 2
+      options:
+      description: nginx ("engine x") is an HTTP web server, reverse proxy, content cache, load balancer, TCP/UDP proxy server, and mail proxy server. Originally written by Igor Sysoev and distributed under the 2-clause BSD License.
+  - watchtower: 
+      image: alpine
+      versions: latest
+      type: utility
+      memory: 256
+      disk: 2
+      options:
+      description: A process for automating Docker container base image updates.
+  - notifier: 
+      image: alpine
+      versions: latest
+      type: utility
+      memory: 256
+      disk: 2
+      options: 
+      description: Simple UI driven way to manage updates & notifications for Docker containers. 
+  - phi: 
+      image: alpine
+      versions: latest
+      type: model
+      memory: 4
+      disk: 10
+      gpu: true
+      options: 
+      description: Phi-2 is a Transformer with 2.7 billion parameters. It was trained using the same data sources as Phi-1.5, augmented with a new data source that consists of various NLP synthetic texts.

@@ -1,0 +1,51 @@
+#app-grid {
+    layout: grid;
+    grid-size: 4;  /* two columns */
+    grid-columns: 1fr;
+    grid-rows: 1fr;
+    background: $panel;
+}
+
+.home_grid {
+    layout: grid;
+    grid-size: 2 2;  /* two columns */
+    align: center middle;
+}
+
+.home_buttons {
+    width: 30;
+}
+
+#sidebar {
+    height: 100%;
+    column-span: 1;
+}
+
+#list {
+    height: 100%;
+    column-span: 1;
+}
+
+#main {
+    height: 100%;
+    column-span: 2;
+}
+
+#main > Static {
+    height: 100%;
+}
+
+DataTable > * {
+    background: $panel;
+    height: auto;
+}
+
+ListItem {
+    padding-left: 1;
+    background: $panel;
+}
+
+.with_title {
+    border: solid $secondary;
+    border-title-align: left;
+}
