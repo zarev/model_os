@@ -45,18 +45,18 @@ class HomeScreen(Screen):
                     yield Button(":computer: Host", id="tab-host")
                     yield Button(":whale: Docker", id="tab-docker")
                     yield Button(":wrench: System", id="tab-system")
-                    yield Button(":download: Updates", id="tab-updates")
+                    # yield Button(":download: Updates", id="tab-updates")
                     yield Button(":question: Help", id="tab-help")
-                    yield Button(":cog: Settings", id="tab-settings")
+                    # yield Button("Settings", id="tab-settings")
                 with Horizontal(id="tabs-info"):  
                     yield InfoLine()
             with ContentSwitcher(initial="tab-host"):
                 yield HostTab(self.args, self.data)
                 yield DockerTab(self.args, self.data)
                 yield SystemTab(self.args, self.data)
-                yield UpdatesTab(self.args, self.data)
+                # yield UpdatesTab(self.args, self.data)
                 yield HelpTab(self.args, self.data)
-                yield SettingsTab(self.args, self.data)
+                # yield SettingsTab(self.args, self.data)
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

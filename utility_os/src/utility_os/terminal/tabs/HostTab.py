@@ -14,8 +14,8 @@ from api.docker import get_images, get_containers, get_volumes, get_system, insp
 from utils.bytes import humanbytes
 ### -- Docker
 from terminal.widgets.docker._system import DockerInfo
-from terminal.widgets.docker._images import DockerImages
-from terminal.widgets.docker._volumes import DockerVolumes
+from terminal.widgets.docker._images import DockerImagesTable
+from terminal.widgets.docker._volumes import DockerVolumesTable
 ### -- Host info
 from terminal.widgets.info._gpu import GPU
 from terminal.widgets.info._cpu import CPU

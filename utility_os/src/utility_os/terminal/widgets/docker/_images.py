@@ -8,17 +8,17 @@ from textual.widgets import DataTable
 
 ## --- Locals
 ### -- Api & utils
-from api.docker import inspect_image
+from api.docker import inspect_image, get_images
 
-class DockerImages(Widget):
-    def __init__(self, images: list) -> None:
-        self.images = images
+class DockerImagesTable(Widget):
+    def __init__(self) -> None:
         super().__init__()
 
     def compose(self) -> ComposeResult:
         yield DataTable(id='images-list', classes='with_title', show_header=True)
 
     def on_mount(self):
+        self.images = get_images()
         images_table = self.query_one(f"#images-list", DataTable)
         images_table.border_title = f":horizontal_traffic_light: Images list"
         images_table.add_column("ID")

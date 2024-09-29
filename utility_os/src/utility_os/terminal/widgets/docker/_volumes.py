@@ -5,16 +5,19 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import DataTable
+## --- Locals
+### -- Api & utils
+from api.docker import get_volumes
 
-class DockerVolumes(Widget):
-    def __init__(self, volumes: list) -> None:
-        self.volumes = volumes
+class DockerVolumesTable(Widget):
+    def __init__(self) -> None:
         super().__init__()
 
     def compose(self) -> ComposeResult:
         yield DataTable(id='volumes-list', classes='with_title', show_header=True)
 
     def on_mount(self):
+        self.volumes = get_volumes()
         volumes_table = self.query_one(f"#volumes-list", DataTable)
         volumes_table.border_title = f":horizontal_traffic_light: Volumes list"
         volumes_table.add_column("Name")

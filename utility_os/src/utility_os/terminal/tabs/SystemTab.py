@@ -2,6 +2,7 @@
 
 ## --- Libs
 from rich.text import Text
+import yaml
 from time import monotonic
 from textual.reactive import reactive
 from textual.app import ComposeResult
@@ -80,40 +81,18 @@ class SystemTab(Container):
         super().__init__(id="tab-system")
 
     def compose(self) -> ComposeResult:
+
         with Horizontal(id="tab-grid"):
-            with VerticalScroll(id='tab-main'):
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc1[/]"
-                with cnt:
-                    yield Static("Test")
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc2[/]"
-                with cnt:
-                    yield Static("Test")
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc3[/]"
-                with cnt:
-                    yield Static("Test")
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc4[/]"
-                with cnt:
-                    yield Static("Test")
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc5[/]"
-                with cnt:
-                    yield Static("Test")
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc6[/]"
-                with cnt:
-                    yield Static("Test")
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc7[/]"
-                with cnt:
-                    yield Static("Test")
-                cnt = Container(classes="titled-container")
-                cnt.border_title = "[b]svc8[/]"
-                with cnt:
-                    yield Static("Test")
+            # with VerticalScroll(id='tab-main-eq'):
+                # with open('utility_os/src/utility_os/terminal/services.yaml', 'r') as file:
+                #     services = yaml.safe_load(file).services
+                #     for service_name, service_def in services.items():
+                #         cnt = Container(classes="titled-container")
+                #         cnt.border_title = f"[b]{service_name} - {service_def.type}[/]"
+                #         with cnt:
+                #             yield Static(f"Image: {service_def.image}:{service_def.version}")
+                #             yield Static(f"Requirements:\r - {service_def.memory} GB (ram)\r - {service_def.memory} GB (disk)\r - GPU {"" if service_def.gpu else "not"} required")
+                #             yield Static(service_def.description)
             with VerticalScroll(id="tab-pane"):
                yield Service()
                yield Service()
@@ -122,4 +101,3 @@ class SystemTab(Container):
     def on_mount(self):
         self.title = "OsCli"
         self.sub_title = "System tab"
-        
