@@ -1,4 +1,6 @@
 import GPUtil
+import csv
+
 from rich import box
 from rich.console import Group
 from rich.panel import Panel
@@ -47,6 +49,12 @@ class GPU(Widget):
 
     def refresh_table(self):
         gpu = GPUtil.getGPUs()[0]
+        with open('output.csv', 'a') as f:
+            output_string = "GPU, "
+            for key in gpu.__dict__.keys():
+                output_string += f"{key}:{getattr(gpu, key)}, "
+            output_string += "\n"
+            f.write(output_string)
 
         for k, (attr, label, stream, col) in enumerate(
             zip(self.attrs, self.labels, self.mem_streams, colors)

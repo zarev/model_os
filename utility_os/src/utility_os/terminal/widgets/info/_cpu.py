@@ -206,10 +206,13 @@ class CPU(Widget):
         self.set_interval(2.0, self.collect_data)
 
     def collect_data(self):
+        output_string = "CPU, "
         # CPU loads
         self.cpu_total_stream.add_value(psutil.cpu_percent())
         #
+        output_string += f"util: {psutil.cpu_percent()}%, "
         load_per_thread = psutil.cpu_percent(percpu=True)
+        output_string += f"load: {load_per_thread}, "
         assert isinstance(load_per_thread, list)
         for stream, load in zip(self.thread_load_streams, load_per_thread):
             stream.add_value(load)
@@ -221,6 +224,7 @@ class CPU(Widget):
 
             if self.has_cpu_temp:
                 self.temp_total_stream.add_value(temps[0])
+                output_string += f"temp: {temps[0]}, "
 
             if self.has_core_temps:
                 for stream, temp in zip(self.core_temp_streams, temps[1:]):
@@ -251,7 +255,7 @@ class CPU(Widget):
 
         if self.has_fan_rpm:
             fan_current = list(psutil.sensors_fans().values())[0][0].current
-
+            output_string += f"fan: {fan_current}, "
             # See comment above
             if fan_current == 65535:
                 fan_current = self.fan_stream.maxval
@@ -269,6 +273,9 @@ class CPU(Widget):
             t.add_row(graph, "")
 
         self.panel.renderable = t
+        with open('output.csv', 'a') as f:
+            output_string += "\n"
+            f.write(output_string)
 
         # textual method
         self.refresh()

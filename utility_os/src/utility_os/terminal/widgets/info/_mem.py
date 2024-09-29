@@ -53,8 +53,14 @@ class Mem(Widget):
         self.set_interval(2.0, self.refresh_table)
 
     def refresh_table(self):
+        output_string = "MEM, "
         mem = psutil.virtual_memory()
+        output_string += f"mem: {mem}, "
         swap = psutil.swap_memory()
+        output_string += f"swap: {swap}, "
+        with open('output.csv', 'a') as f:
+            output_string += "\n"
+            f.write(output_string)
 
         for k, (attr, label, stream, col) in enumerate(
             zip(self.attrs, self.labels, self.mem_streams, colors)
