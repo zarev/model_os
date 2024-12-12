@@ -1,6 +1,10 @@
 fastapi
 pydantic
-onnxruntime-genai
 uvicorn
 requests
 pylint
+pillow
+transformers
+torch
+accelerate
+torchvision
